@@ -161,7 +161,8 @@
                  * 2x-1-1 becomes 2x(-1)-1. TODO: remove this hack and use the precedence Dictionary<>
                  * instead.
                 */
-                bool addLeftParen = false;
+                //bool addLeftParen = false;
+                int addLeftParen = 0;
 
                 foreach(var c in expression) {
                     if(char.IsNumber(c) || c == decimalSeperator[0]) {
@@ -193,9 +194,11 @@
                         tokens.Add(new Types.Number(number));
                         tokenString = "";
 
-                        if(addLeftParen) {
+                        //if(addLeftParen) {
+                        if(addLeftParen > 0) {
                             tokens.Add(new Types.LeftParen());
-                            addLeftParen = false;
+                            //addLeftParen = false;
+                            addLeftParen--;
                         }
                     }
 
@@ -223,7 +226,8 @@
                         if(tokens.Count != 0) {
                             if((char)tokens.Last().Get != ')') {
                                 tokens.Add(new Types.RightParen());
-                                addLeftParen = true;
+                                //addLeftParen = true;
+                                addLeftParen++;
                             }
                         }
 
@@ -246,10 +250,14 @@
                     }
 
                     tokens.Add(new Types.Number(number));
-                    if(addLeftParen) {
+                    //if(addLeftParen) {
+                    //    tokens.Add(new Types.LeftParen());
+                    //    addLeftParen = false;
+                    //}
+                }
+
+                for(int i = addLeftParen; i > 0; --i) {
                         tokens.Add(new Types.LeftParen());
-                        addLeftParen = false;
-                    }
                 }
 
                 infixTokens = tokens;
