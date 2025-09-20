@@ -1,6 +1,9 @@
 ﻿namespace calculator {
 
     // TODO: this https://blog.ndepend.com/csharp-unions/
+    // Source for the tokenize and evaluat function:
+    // https://algotree.org/algorithms/stack_based/evaluate_infix/
+
     class Token {
         public bool IsFunction() {
             return isFunction;
@@ -20,7 +23,7 @@
             this.val = num;
         }
         public override float Get => val;
-        float val = 0;
+        readonly float val = 0;
     }
 
     class LeftParen : Token {
@@ -30,7 +33,6 @@
         public override float Get => ')';
     }
 
-
     class RightParen : Token {
         public RightParen() {
             isParen = true;
@@ -38,17 +40,15 @@
         public override float Get => '(';
     }
 
-
     class OperatorToken : Token {
 
         public OperatorToken(string op, int argumentCount) {
             this.isFunction = true;
-            //this.op = (Operator)op[0];
             this.op = op[0];
             this.argumentCount=argumentCount;
         }
 
-        public override float Get => (int)op;
+        public override float Get => op;
         public int argumentCount = 0;
         readonly char op;
     }
@@ -58,7 +58,7 @@
             this.expression = expression;
         }
 
-        public List<Token> MakeTokens() {
+        public Expression Tokenize() {
             List<Token> tokens = [];
             string tokenString = "";
             /*
@@ -77,8 +77,14 @@
                 }
 
                 if(tokenString != string.Empty) {
-                    tokens.Add(new Number(float.Parse(tokenString)));
+                    if(!float.TryParse(tokenString, out var number)) {
+                        Console.WriteLine("Not a number!");
+                        throw new Exception("No number!");
+                    }
+
+                    tokens.Add(new Number(number));
                     tokenString = "";
+
                     if(addLeftParen) {
                         tokens.Add(new LeftParen());
                         addLeftParen = false;
@@ -95,40 +101,39 @@
                         tokens.Last().IsFunction()) {
 
                         if(tokens.Count != 0) {
-                            if(
-                                (char)tokens.Last().Get != ')'
-                                ) {
+                            if((char)tokens.Last().Get != ')') {
                                 tokens.Add(new RightParen());
                                 addLeftParen = true;
                             }
                         }
+                        // TODO: remove hard-coded argument count
                         tokens.Add(new OperatorToken(c.ToString(), 1));
 
                     } else {
                         // The default amount of arguments for an infix operator is 2
-                        tokens.Add(new OperatorToken(
-                            c.ToString(), 2));
+                        // TODO: remove hard-coded argument count
+                        tokens.Add(new OperatorToken(c.ToString(), 2));
                     }
                 }
             }
 
             // TODO: somehow remove this repetition
             if(tokenString != string.Empty) {
-                tokens.Add(new Number(
-                    float.Parse(tokenString)));
+                if(!float.TryParse(tokenString, out var number)) {
+                    Console.WriteLine("Not a number!");
+                    throw new Exception("No number!");
+                }
+
+                tokens.Add(new Number(number));
                 if(addLeftParen) {
                     tokens.Add(new LeftParen());
                     addLeftParen = false;
                 }
             }
 
-            return tokens;
+            infixTokens = tokens;
+            return this;
         }
-
-        string expression = "";
-    }
-
-    internal class Program {
 
         static Dictionary<string, int> precedence = new (){
             {"^", 4},
@@ -151,36 +156,39 @@
             // Pop from stack
             {".", (stack, _) => {
 
-                // Account for the ')' in the stack.
                 if(stack.Count == 0) {
                     Console.WriteLine("Stack is already empty!");
                 } else {
-                        stack.Pop();
+                    stack.Pop();
                 }
-                return stack; } },
+                return stack;
+            }},
             // Print stack
             {"$", (stack, _) => {
                 int i = 0;
-                if(stack.Count == 0)
+                if(stack.Count == 0) {
                     Console.WriteLine("Stack is empty!");
+                }
 
                 foreach(var token in stack) {
                     Console.WriteLine($"{i}) {token}");
                     i++;
                 }
                 return stack;
-            } },
+            }},
             {"-", (stack, argc) => {
                 if(stack.Count < argc) {
                     throw new Exception(
                         $"Function expected {argc} arguments but got {stack.Count}");
                 }
-                var r = stack.Pop();
-                if(argc == 1)
-                    stack.Push(-r);
 
-                else if (argc == 2)
+                var r = stack.Pop();
+
+                if(argc == 1) {
+                    stack.Push(-r);
+                } else if (argc == 2) {
                     stack.Push(stack.Pop() - r);
+                }
 
                 return stack;
             }},
@@ -189,18 +197,24 @@
                     throw new Exception(
                         $"Function expected {argc} arguments but got {stack.Count}");
                 }
-               var r =  stack.Pop();
+
+                var r =  stack.Pop();
+
                 stack.Push(float.Pow(stack.Pop(), r));
 
-                return stack; } },
+                return stack;
+            }},
 
             {"+", (stack, argc) => {
                 if(stack.Count < argc) {
                     throw new Exception(
                         $"Function expected {argc} arguments but got {stack.Count}");
                 }
+
                 var r = stack.Pop();
+
                 stack.Push(stack.Pop() + r);
+
                 return stack;
             }},
             {"*", (stack, argc) => {
@@ -209,7 +223,9 @@
                         $"Function expected {argc} arguments but got {stack.Count}");
                 }
                 var r = stack.Pop();
+
                 stack.Push(stack.Pop() * r);
+
                 return stack;
             }},
             {"/", (stack, argc) => {
@@ -219,16 +235,19 @@
                 }
 
                 var r = stack.Pop();
+
                 if(r == 0) {
                     throw new Exception("Divide by zero.");
                 }
+
                 stack.Push(stack.Pop() / r);
+
                 return stack;
             }},
         };
 
         static Stack<float> stack = new();
-        public static float Evaluate(List<Token> tokens) {
+        public float Evaluate() {
 
             if(!persistentStack) {
                 stack.Clear();
@@ -236,14 +255,12 @@
 
             foreach(var token in tokens) {
                 if(token.IsFunction()) {
-                    var f =
-                        functionArray.TryGetValue(((char)token.Get).ToString(), out var func);
 
-                    if(!f) {
+                    if(!functionArray.TryGetValue(
+                        ((char)token.Get).ToString(), out var func)) {
                         Console.WriteLine($"No function {(char)token.Get}");
                         return float.NegativeInfinity;
                     }
-
 
                     try {
                         stack = func(stack, ((OperatorToken)token).argumentCount);
@@ -256,7 +273,7 @@
                 stack.Push(token.Get);
             }
 
-            if(stack.Count <= 0 || stack.Peek() == 40) {
+            if(stack.Count <= 0 /* || stack.Peek() == 40 */) {
                 return float.NegativeInfinity;
             }
 
@@ -264,19 +281,18 @@
         }
 
         static bool Precedence(string l, string r) {
-            var bl = precedence.TryGetValue(l, out int lhs);
-            if(!bl)
+            if(!precedence.TryGetValue(l, out int lhs))
                 lhs = 0;
-            var br = precedence.TryGetValue(r, out int rhs);
-            if(!br)
+
+            if(!precedence.TryGetValue(r, out int rhs))
                 rhs = 0;
 
             return lhs >= rhs;
         }
 
-        static List<Token> InfixToPostfix(List<Token> infixTokens) {
+        public Expression InfixToPostfix() {
             Stack<Token> stack = new();
-            List<Token> postfixTokens = new();
+            List<Token> postfixTokens = [];
 
             // For the popping operator
             stack.Push(new RightParen());
@@ -292,7 +308,7 @@
                             postfixTokens.Add(stack.Pop());
                         }
 
-                       if(stack.Count != 0)
+                        if(stack.Count != 0)
                             stack.Pop();
                     }
                     continue;
@@ -300,7 +316,8 @@
 
                     while(stack.Count != 0
                         && stack.Peek().Get != '('
-                        && Precedence(((char)stack.Peek().Get).ToString(), ((char)token.Get).ToString())) {
+                        && Precedence(((char)stack.Peek().Get).ToString(),
+                        ((char)token.Get).ToString())) {
                         postfixTokens.Add(stack.Pop());
                     }
                     stack.Push(token);
@@ -311,9 +328,16 @@
                 }
             }
 
-            return postfixTokens;
+            tokens = postfixTokens;
+            return this;
         }
 
+        string expression = "";
+        List<Token> infixTokens = [];
+        List<Token> tokens = [];
+    }
+
+    internal class Program {
         static Expression GetExpression() {
             Console.Write(">");
             return new(Console.ReadLine() ?? "");
@@ -321,13 +345,10 @@
 
         static void Main() {
             for(; ; ) {
-                var t = Evaluate(
-            //new Expression("1+2*4+1+2*5").
-            //new Expression("1+2*4+1").
-            InfixToPostfix(
-             GetExpression().
-             //new Expression("$").
-            // new Expression("2^5*(3-4)").
+                //new Expression("1+2*4+1+2*5").
+                //new Expression("1+2*4+1").
+                //new Expression("$").
+                //new Expression("2^5*(3-4)").
                 //new Expression("(-1-2-3)").//-6
                 //new Expression("-2").//-6
                 //new Expression("(-1)+(-1)").
@@ -342,18 +363,16 @@
                 //new Expression("9^(-1)"). // 0,111111
                 //new Expression("9^-1"). // 0,111111
                 //new Expression("2^(-1)").
-
                 //new Expression("2^-1").
                 //new Expression("2^-1-1").
                 //new Expression("2*(-1)").
-
                 //new Expression("(1/4)^(-1)").
-             //   new Expression("-1").
-            MakeTokens())
-            );
+                //new Expression("-1").
 
-                if(t != float.NegativeInfinity) {
-                    Console.WriteLine(t);
+                var result = GetExpression().Tokenize().InfixToPostfix().Evaluate();
+
+                if(result != float.NegativeInfinity) {
+                    Console.WriteLine(result);
                 }
             }
         }
