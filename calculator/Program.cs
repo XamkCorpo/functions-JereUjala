@@ -1,59 +1,6 @@
 ﻿namespace calculator {
 
-    enum Operator {
-        Add, Subtract, Multiply, Divide, Power,
-        // Metaoperators
-        //LeftParen, RightParen
-    }
-
     // TODO: this https://blog.ndepend.com/csharp-unions/
-    class Node {
-        public Node? left = null, right = null;
-        public Token? token = null;
-
-        public void Print(int num = 0) {
-            for(int i = 0; i < num; i++)
-                Console.Write(" ");
-
-            Console.WriteLine(token.IsFunction() ? (Operator)token.Get : token.Get);
-            if(left != null)
-                left.Print(num++);
-            if(right != null)
-                right.Print(num++);
-            Console.WriteLine();
-
-        }
-
-        public float Eval(Dictionary<Operator, Func<float, float, float>> opsArray) {
-
-            //if(token is null)
-            //    if(left is null)
-            //        return Evaltoken.Get;
-            //    else
-            //if(right is null)
-            //        return token.Get;
-            //    else
-            //        return null;
-
-            if(token is null) {
-                if(left is null && right is not null)
-                    return right.Eval(opsArray);
-
-                if(right is null  && left is not null)
-                    return left.Eval(opsArray);
-
-                return 0.0f;
-            }
-
-            if(!token.IsFunction())
-                return token.Get;
-
-            return opsArray[(Operator)token.Get]
-                (right.Eval(opsArray), left.Eval(opsArray));
-        }
-
-    }
-
     class Token {
         public bool IsFunction() {
             return isFunction;
@@ -81,7 +28,6 @@
             isParen = true;
         }
         public override float Get => ')';
-        //public override float Get => (float)Operator.LeftParen;
     }
 
 
@@ -90,7 +36,6 @@
             isParen = true;
         }
         public override float Get => '(';
-        //public override float Get => (float)Operator.RightParen;
     }
 
 
@@ -103,35 +48,10 @@
             this.argumentCount=argumentCount;
         }
 
-        //public OperatorToken(Operator op, int argumentCount) {
-        //    this.isFunction = true;
-        //    this.op = op;
-        //    this.argumentCount=argumentCount;
-        //}
         public override float Get => (int)op;
         public int argumentCount = 0;
-        //Operator op;
-        char op;
+        readonly char op;
     }
-
-    //class DyadicOperator : Token {
-    //    public DyadicOperator(Operator op) {
-    //        this.isFunction = true;
-    //        this.op = op;
-    //    }
-    //    public override float Get => (int)op;
-    //    Operator op;
-    //}
-
-    //class UnaryOperator : Token {
-    //    public UnaryOperator(Operator op) {
-    //        this.isFunction = true;
-    //        this.op = op;
-    //    }
-    //    public override float Get => (int)op;
-    //    Operator op;
-    //}
-
 
     struct Expression {
         public Expression(string expression) {
@@ -167,32 +87,25 @@
 
                 if(c == '(') {
                     tokens.Add(new RightParen());
-                    //tokens.Add(new OperatorToken(c.ToString(), 1));
                 } else if(c == ')') {
                     tokens.Add(new LeftParen());
-                    //tokens.Add(new OperatorToken(c.ToString(), 1));
                 } else {
                     if((tokens.Count == 0) ||
-                        //((Operator)tokens.Last().Get == Operator.RightParen) ||
                         ((char)tokens.Last().Get == '(') ||
                         tokens.Last().IsFunction()) {
 
                         if(tokens.Count != 0) {
                             if(
-                                //(Operator)tokens.Last().Get != Operator.RightParen
                                 (char)tokens.Last().Get != ')'
                                 ) {
                                 tokens.Add(new RightParen());
                                 addLeftParen = true;
                             }
                         }
-                        //tokens.Add(new OperatorToken(stringToOpsTable [c.ToString()], 1));
                         tokens.Add(new OperatorToken(c.ToString(), 1));
 
                     } else {
                         // The default amount of arguments for an infix operator is 2
-                        //tokens.Add(new OperatorToken(stringToOpsTable
-                        //    [c.ToString()], 2));
                         tokens.Add(new OperatorToken(
                             c.ToString(), 2));
                     }
@@ -217,26 +130,13 @@
 
     internal class Program {
 
-
-        //static Dictionary<Operator, int> precedence = new ()
-        //    {
-        //    {Operator.Power, 4},
-        //    {Operator.Divide, 3},
-        //    {Operator.Multiply, 3},
-        //    {Operator.Add, 2},
-        //    {Operator.Subtract, 2},
-        //    {Operator.RightParen, 1},
-        //};
-
-        static Dictionary<string, int> precedence = new ()
-            {
+        static Dictionary<string, int> precedence = new (){
             {"^", 4},
             {"/", 3},
             {"*", 3},
             {"+", 2},
             {"-", 2},
-            {"(", 1},
-        };
+            {"(", 1}};
 
         static bool persistentStack = false;
 
@@ -364,8 +264,7 @@
         }
 
         static bool Precedence(string l, string r) {
-
-            var bl= precedence.TryGetValue(l, out int lhs);
+            var bl = precedence.TryGetValue(l, out int lhs);
             if(!bl)
                 lhs = 0;
             var br = precedence.TryGetValue(r, out int rhs);
@@ -373,7 +272,6 @@
                 rhs = 0;
 
             return lhs >= rhs;
-
         }
 
         static List<Token> InfixToPostfix(List<Token> infixTokens) {
@@ -387,15 +285,10 @@
             foreach(Token token in infixTokens) {
                 if(token.IsParen()) {
                     if((char)token.Get == '(') {
-                        //if((Operator)token.Get == Operator.RightParen) {
                         stack.Push(token);
                     } else if((char)token.Get == ')') {
-                        //} else if((Operator)token.Get == Operator.LeftParen) {
                         // Pop all the operators from the stack
-                        //while(stack.Count != 0 && stack.Peek().Get != '(') {
                         while(stack.Count != 0 && stack.First().Get != '(') {
-                            //while((Operator)stack.Peek().Get
-                            //    != Operator.RightParen) {
                             postfixTokens.Add(stack.Pop());
                         }
 
@@ -407,13 +300,7 @@
 
                     while(stack.Count != 0
                         && stack.Peek().Get != '('
-                        &&
-                        //(precedence[((char)stack.Peek().Get).ToString()]
-                        //>= precedence[((char)token.Get).ToString()])
-
-                        Precedence(((char)stack.Peek().Get).ToString(), ((char)token.Get).ToString())
-
-                        ) {
+                        && Precedence(((char)stack.Peek().Get).ToString(), ((char)token.Get).ToString())) {
                         postfixTokens.Add(stack.Pop());
                     }
                     stack.Push(token);
@@ -424,7 +311,6 @@
                 }
             }
 
-            //postfixTokens.RemoveAt(postfixTokens.Count -1);
             return postfixTokens;
         }
 
