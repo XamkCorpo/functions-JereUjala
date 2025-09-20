@@ -3,7 +3,7 @@
     enum Operator {
         Add, Subtract, Multiply, Divide, Power,
         // Metaoperators
-        LeftParen, RightParen
+        //LeftParen, RightParen
     }
 
     // TODO: this https://blog.ndepend.com/csharp-unions/
@@ -80,8 +80,8 @@
         public LeftParen() {
             isParen = true;
         }
-        //public override float Get => ')';
-        public override float Get => (float)Operator.LeftParen;
+        public override float Get => ')';
+        //public override float Get => (float)Operator.LeftParen;
     }
 
 
@@ -89,8 +89,8 @@
         public RightParen() {
             isParen = true;
         }
-        //public override float Get => '(';
-        public override float Get => (float)Operator.RightParen;
+        public override float Get => '(';
+        //public override float Get => (float)Operator.RightParen;
 
     }
 
@@ -99,18 +99,20 @@
 
         public OperatorToken(string op, int argumentCount) {
             this.isFunction = true;
-            this.op = (Operator)op[0];
+            //this.op = (Operator)op[0];
+            this.op = op[0];
             this.argumentCount=argumentCount;
         }
 
-        public OperatorToken(Operator op, int argumentCount) {
-            this.isFunction = true;
-            this.op = op;
-            this.argumentCount=argumentCount;
-        }
+        //public OperatorToken(Operator op, int argumentCount) {
+        //    this.isFunction = true;
+        //    this.op = op;
+        //    this.argumentCount=argumentCount;
+        //}
         public override float Get => (int)op;
         public int argumentCount = 0;
-        Operator op;
+        //Operator op;
+        char op;
     }
 
     //class DyadicOperator : Token {
@@ -137,8 +139,7 @@
             this.expression = expression;
         }
 
-        public List<Token> MakeTokens(Dictionary<string, Operator>
-            stringToOpsTable) {
+        public List<Token> MakeTokens() {
             List<Token> tokens = [];
             string tokenString = "";
             /*
@@ -151,7 +152,6 @@
             bool addLeftParen = false;
 
             foreach(var c in expression) {
-                Console.WriteLine($"Token {tokenString}");
                 if(char.IsNumber(c)) {
                     tokenString += c;
                     continue;
@@ -166,17 +166,23 @@
                     }
                 }
 
-                if(c == '(')
+                if(c == '(') {
                     tokens.Add(new RightParen());
-                else if(c == ')')
+                    //tokens.Add(new OperatorToken(c.ToString(), 1));
+                } else if(c == ')') {
                     tokens.Add(new LeftParen());
-                else {
+                    //tokens.Add(new OperatorToken(c.ToString(), 1));
+                } else {
                     if((tokens.Count == 0) ||
-                        ((Operator)tokens.Last().Get == Operator.RightParen) ||
+                        //((Operator)tokens.Last().Get == Operator.RightParen) ||
+                        ((char)tokens.Last().Get == '(') ||
                         tokens.Last().IsFunction()) {
 
                         if(tokens.Count != 0) {
-                            if((Operator)tokens.Last().Get != Operator.RightParen) {
+                            if(
+                                //(Operator)tokens.Last().Get != Operator.RightParen
+                                (char)tokens.Last().Get != ')'
+                                ) {
                                 tokens.Add(new RightParen());
                                 addLeftParen = true;
                             }
@@ -213,76 +219,80 @@
     internal class Program {
 
 
-        static Dictionary<Operator, int> precedence = new ()
+        //static Dictionary<Operator, int> precedence = new ()
+        //    {
+        //    {Operator.Power, 4},
+        //    {Operator.Divide, 3},
+        //    {Operator.Multiply, 3},
+        //    {Operator.Add, 2},
+        //    {Operator.Subtract, 2},
+        //    {Operator.RightParen, 1},
+        //};
+
+        static Dictionary<string, int> precedence = new ()
             {
-            {Operator.Power, 4},
-            {Operator.Divide, 3},
-            {Operator.Multiply, 3},
-            {Operator.Add, 2},
-            {Operator.Subtract, 2},
-            {Operator.RightParen, 1},
+            {"^", 4},
+            {"/", 3},
+            {"*", 3},
+            {"+", 2},
+            {"-", 2},
+            {"(", 1},
         };
+
+        static bool persistentStack = false;
+
 
         static readonly Dictionary<string, Func<Stack<float>, int, Stack<float>>> functionArray
         = new (){
+            // Persistent stack
+            {"s", (stack, _) => {
+                persistentStack = !persistentStack;
+                Console.WriteLine($"Persistent stack: turned {(persistentStack ? "on" : "off")}");
+                return stack; } },
             // Pop from stack
-            {".", (Stack<float> stack, int _) => { stack.Pop(); return stack; } },
+            {".", (stack, _) => { stack.Pop(); return stack; } },
             // Print stack
-            {"$", (Stack<float> stack, int _) => {
+            {"$", (stack, _) => {
                 int i = 0;
                 foreach(var token in stack) {
                     Console.WriteLine($"{i}) {token.ToString()}");
                     i++;
-                } return stack; } },
-            {"-", (Stack<float> stack, int argc) => {
+                }
+                return stack;
+            } },
+            {"-", (stack, argc) => {
                 var r = stack.Pop();
                 if(argc == 1)
                     stack.Push(-r);
 
                 else if (argc == 2)
-                    stack.Push(stack.Pop() - r); 
+                    stack.Push(stack.Pop() - r);
 
+                return stack;
+            }},
+            {"^", (stack, _) => {
+               var r =  stack.Pop();
+                stack.Push(float.Pow(stack.Pop(), r));
+
+                return stack; } },
+
+            {"+", (stack, _) => {
+                var r = stack.Pop();
+                stack.Push(stack.Pop() + r);
                 return stack;
             }
             },
         };
 
         public static float Evaluate(List<Token> tokens//,
-           // Dictionary<Operator, Func<float, float, float>> ops
+                                                       // Dictionary<Operator, Func<float, float, float>> ops
             ) {
 
             Stack<float> stack = new();
 
             foreach(var token in tokens) {
-
                 if(token.IsFunction()) {
-                    var r = stack.Pop();
-
-                    //if(((OperatorToken)token).argumentCount == 1) {
-                    //    stack.Push(
-                    //        ops[(Operator)token.Get]
-                    //            (0, r));
-                    //} else if(((OperatorToken)token).argumentCount == 2) {
-                    //    var l = stack.Pop();
-                    //    stack.Push(
-                    //        ops[(Operator)token.Get]
-                    //                (l, r));
-                    //    // 0 amount of arguments isn't support neither
-                    //} else /* if(((OperatorToken)token).argumentCount > 2) */ {
-                    //    throw new Exception("Unsupported amount of arguments to a function!");
-                    //}
-
-
-                    //stack.Push(
-                    //ops[(Operator)token.Get]
-                    //    (stack)
-                    //(0, r)
-                   // )
-                    ;
-                    functionArray[token.Get.ToString()] (stack, ((OperatorToken)token).argumentCount);
-
-
-
+                    stack = functionArray[((char)token.Get).ToString()](stack, ((OperatorToken)token).argumentCount);
                     continue;
                 }
 
@@ -307,20 +317,32 @@
             {Operator.Power, float.Pow }
         };
 
-        static readonly Dictionary<string, Operator> stringToOpsTable
-        = new (){
-            {"+", Operator.Add},
-            {"-", Operator.Subtract},
-            {"*", Operator.Multiply},
-            {"/", Operator.Divide},
-            {"^", Operator.Power},
-            {"(", Operator.RightParen},
-        };
+        //static readonly Dictionary<string, Operator> stringToOpsTable
+        //= new (){
+        //    {"+", Operator.Add},
+        //    {"-", Operator.Subtract},
+        //    {"*", Operator.Multiply},
+        //    {"/", Operator.Divide},
+        //    {"^", Operator.Power},
+        //    {"(", Operator.RightParen},
+        //};
 
 
+        static bool Precedence(string l, string r) {
 
-        static List<Token> InfixToPostfix(List<Token> infixTokens,
-        Dictionary<string, Operator> stringToOpsTable) {
+            var bl= precedence.TryGetValue(l, out int lhs);
+            if(!bl)
+                lhs = 0;
+            //precedence[ (Operator)token.Get]
+            var br = precedence.TryGetValue(r, out int rhs);
+            if(!br)
+                rhs = 0; 
+
+            return lhs >= rhs;
+
+        }
+
+        static List<Token> InfixToPostfix(List<Token> infixTokens) {
             Stack<Token> stack = new();
             List<Token> postfixTokens = new();
 
@@ -330,27 +352,30 @@
 
             foreach(Token token in infixTokens) {
                 if(token.IsParen()) {
-                    //if((char)token.Get == '(') {
-                    if((Operator)token.Get == Operator.RightParen) {
+                    if((char)token.Get == '(') {
+                        //if((Operator)token.Get == Operator.RightParen) {
                         stack.Push(token);
-                        //} else if((char)token.Get == ')') {
-                    } else if((Operator)token.Get == Operator.LeftParen) {
+                    } else if((char)token.Get == ')') {
+                        //} else if((Operator)token.Get == Operator.LeftParen) {
                         // Pop all the operators from the stack
-                        //while(stack.Peek().Get != '(') {
-                        while((Operator)stack.Peek().Get
-                            != Operator.RightParen) {
+                        while(stack.Count != 0 && stack.Peek().Get != '(') {
+                            //while((Operator)stack.Peek().Get
+                            //    != Operator.RightParen) {
                             postfixTokens.Add(stack.Pop());
                         }
-                        stack.Pop();
+
+                        if(stack.Count != 0)
+                            stack.Pop();
                     }
                 } else if(token.IsFunction()) {
 
                     while(stack.Count != 0 &&
-                        (precedence[
-                            (Operator)stack.Peek()
-                                             .Get]
-                        >= precedence[
-                            (Operator)token.Get])) {
+                        //(precedence[((char)stack.Peek().Get).ToString()]
+                        //>= precedence[((char)token.Get).ToString()])
+
+                        Precedence(((char)stack.Peek().Get).ToString(), ((char)token.Get).ToString())
+
+                        ) {
                         postfixTokens.Add(stack.Pop());
                     }
                     stack.Push(token);
@@ -364,8 +389,10 @@
             return postfixTokens;
         }
 
-        static Expression GetExpression() =>
-            new(Console.ReadLine() ?? "");
+        static Expression GetExpression() {
+            Console.Write(">");
+            return new(Console.ReadLine() ?? "");
+        }
 
         static void Main() {
             for(; ; ) {
@@ -384,15 +411,19 @@
                 //new Expression("(-2)^(1/2)").
                 //new Expression("-(2)^(1/2)").
                 //new Expression("(10-1)^(-1+2-2)"). // 0,111111
+                //new Expression("(10-1)^(-1)"). // 0,111111
+                //new Expression("(9)^(-1)"). // 0,111111
+                //new Expression("9^(-1)"). // 0,111111
+                //new Expression("9^-1"). // 0,111111
                 //new Expression("2^(-1)").
 
                 //new Expression("2^-1").
-            //    new Expression("2^-1-1").
+                //new Expression("2^-1-1").
                 //new Expression("2*(-1)").
 
                 //new Expression("(1/4)^(-1)").
-            MakeTokens(stringToOpsTable), stringToOpsTable)
-           // , opsArray
+             //   new Expression("-1").
+            MakeTokens())
             );
 
                 //t.Print();
