@@ -171,7 +171,6 @@
                     }
 
                     if(c == ' ') {
-                        Console.WriteLine($"Number. {tokenString}");
                         if(tokenString != string.Empty) {
                             if(!float.TryParse(tokenString, out var number)) {
                                 Console.WriteLine("Not a number!");

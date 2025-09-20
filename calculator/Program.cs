@@ -41,9 +41,9 @@
                 //new Expression("(1/4)^(-1)").
                 //new Expression("-1").
 
-                //var expression = GetExpression();
+                var expression = GetExpression();
                 //Interpreter.Expression? expression = new Interpreter.Expression("---1");
-                Interpreter.Expression? expression = new Interpreter.Expression("9^-1");
+                //Interpreter.Expression? expression = new Interpreter.Expression("9^-1");
                 if(expression is null) {
                     break;
                 }
