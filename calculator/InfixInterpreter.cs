@@ -35,6 +35,17 @@
 
                 return stack;
             }},
+            // Duplicate the first element on the stack
+            {"d", (stack, _) => {
+                if(stack.Count <= 0)
+                    return stack;
+
+                   var r = stack.Pop();
+                   stack.Push(r);
+                   stack.Push(r);
+
+                return stack;
+            }},
             // Print stack
             {"$", (stack, _) => {
                 int i = 0;
@@ -145,6 +156,53 @@
                 }
 
                 stack.Push(r);
+
+                return stack;
+            }},
+            {"?", (stack, argc) => {
+
+                if(stack.Count < 1) {
+                    throw new Exception(
+                        $"Function expected {argc} arguments but got {stack.Count}");
+                }
+
+                var r = stack.Pop();
+                if (r == 0) {
+                    stack.Pop();
+                    return stack;
+                }
+                else if (r == 1) {
+                    var t = stack.Pop();
+                    stack.Pop();
+                    stack.Push(t);
+                    return stack;
+                }
+
+                stack.Pop();
+                stack.Pop();
+                return stack;
+            }},
+            {">", (stack, argc) => {
+
+                if(stack.Count < 2) {
+                    throw new Exception(
+                        $"Function expected {argc} arguments but got {stack.Count}");
+                }
+
+                var r = stack.Pop();
+                stack.Push((stack.Pop() > r) ? 1.0f : 0.0f);
+
+                return stack;
+            }},
+            {"<", (stack, argc) => {
+
+                if(stack.Count < 2) {
+                    throw new Exception(
+                        $"Function expected {argc} arguments but got {stack.Count}");
+                }
+
+                var r = stack.Pop();
+                stack.Push((stack.Pop() < r) ? 1.0f : 0.0f);
 
                 return stack;
             }},
