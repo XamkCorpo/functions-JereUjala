@@ -143,8 +143,7 @@
             {"-", 2},
             {"(", 1}};
 
-        static bool persistentStack = false;
-
+        static bool persistentStack = false; 
 
         static readonly Dictionary<string, Func<Stack<float>, int, Stack<float>>> functionArray
         = new (){
@@ -247,7 +246,7 @@
         };
 
         static Stack<float> stack = new();
-        public float Evaluate() {
+        public float Evaluate() { 
 
             if(!persistentStack) {
                 stack.Clear();
@@ -290,7 +289,7 @@
             return lhs >= rhs;
         }
 
-        public Expression InfixToPostfix() {
+        public Expression InfixToPostfix() { 
             Stack<Token> stack = new();
             List<Token> postfixTokens = [];
 
@@ -320,6 +319,7 @@
                         ((char)token.Get).ToString())) {
                         postfixTokens.Add(stack.Pop());
                     }
+
                     stack.Push(token);
 
                 } else {
