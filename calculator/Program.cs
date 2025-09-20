@@ -91,7 +91,6 @@
         }
         public override float Get => '(';
         //public override float Get => (float)Operator.RightParen;
-
     }
 
 
@@ -250,17 +249,32 @@
                 Console.WriteLine($"Persistent stack: turned {(persistentStack ? "on" : "off")}");
                 return stack; } },
             // Pop from stack
-            {".", (stack, _) => { stack.Pop(); return stack; } },
+            {".", (stack, _) => {
+
+                // Account for the ')' in the stack.
+                if(stack.Count == 0) {
+                    Console.WriteLine("Stack is already empty!");
+                } else {
+                        stack.Pop();
+                }
+                return stack; } },
             // Print stack
             {"$", (stack, _) => {
                 int i = 0;
+                if(stack.Count == 0)
+                    Console.WriteLine("Stack is empty!");
+
                 foreach(var token in stack) {
-                    Console.WriteLine($"{i}) {token.ToString()}");
+                    Console.WriteLine($"{i}) {token}");
                     i++;
                 }
                 return stack;
             } },
             {"-", (stack, argc) => {
+                if(stack.Count < argc) {
+                    throw new Exception(
+                        $"Function expected {argc} arguments but got {stack.Count}");
+                }
                 var r = stack.Pop();
                 if(argc == 1)
                     stack.Push(-r);
@@ -270,73 +284,93 @@
 
                 return stack;
             }},
-            {"^", (stack, _) => {
+            {"^", (stack, argc) => {
+                if(stack.Count < argc) {
+                    throw new Exception(
+                        $"Function expected {argc} arguments but got {stack.Count}");
+                }
                var r =  stack.Pop();
                 stack.Push(float.Pow(stack.Pop(), r));
 
                 return stack; } },
 
-            {"+", (stack, _) => {
+            {"+", (stack, argc) => {
+                if(stack.Count < argc) {
+                    throw new Exception(
+                        $"Function expected {argc} arguments but got {stack.Count}");
+                }
                 var r = stack.Pop();
                 stack.Push(stack.Pop() + r);
                 return stack;
-            }
-            },
+            }},
+            {"*", (stack, argc) => {
+                if(stack.Count < argc) {
+                    throw new Exception(
+                        $"Function expected {argc} arguments but got {stack.Count}");
+                }
+                var r = stack.Pop();
+                stack.Push(stack.Pop() * r);
+                return stack;
+            }},
+            {"/", (stack, argc) => {
+                if(stack.Count < argc) {
+                    throw new Exception(
+                        $"Function expected {argc} arguments but got {stack.Count}");
+                }
+
+                var r = stack.Pop();
+                if(r == 0) {
+                    throw new Exception("Divide by zero.");
+                }
+                stack.Push(stack.Pop() / r);
+                return stack;
+            }},
         };
 
-        public static float Evaluate(List<Token> tokens//,
-                                                       // Dictionary<Operator, Func<float, float, float>> ops
-            ) {
+        static Stack<float> stack = new();
+        public static float Evaluate(List<Token> tokens) {
 
-            Stack<float> stack = new();
+            if(!persistentStack) {
+                stack.Clear();
+            }
 
             foreach(var token in tokens) {
                 if(token.IsFunction()) {
-                    stack = functionArray[((char)token.Get).ToString()](stack, ((OperatorToken)token).argumentCount);
+                    var f =
+                        functionArray.TryGetValue(((char)token.Get).ToString(), out var func);
+
+                    if(!f) {
+                        Console.WriteLine($"No function {(char)token.Get}");
+                        return float.NegativeInfinity;
+                    }
+
+
+                    try {
+                        stack = func(stack, ((OperatorToken)token).argumentCount);
+                    } catch(Exception e) {
+                        Console.WriteLine($"Error: {e.Message}");
+                        return float.NegativeInfinity;
+                    }
                     continue;
                 }
-
                 stack.Push(token.Get);
             }
 
-            if(stack.Count <= 0) {
+            if(stack.Count <= 0 || stack.Peek() == 40) {
                 return float.NegativeInfinity;
             }
 
-
-            return stack.Pop();
-
+            return stack.Peek();
         }
-
-        static readonly Dictionary<Operator, Func<float, float, float>> opsArray
-        = new (){
-            {Operator.Add, (float a, float b) => a+b },
-            {Operator.Subtract, (float a, float b) => a-b },
-            {Operator.Multiply, (float a, float b) => a*b },
-            {Operator.Divide, (float a, float b) => a/b },
-            {Operator.Power, float.Pow }
-        };
-
-        //static readonly Dictionary<string, Operator> stringToOpsTable
-        //= new (){
-        //    {"+", Operator.Add},
-        //    {"-", Operator.Subtract},
-        //    {"*", Operator.Multiply},
-        //    {"/", Operator.Divide},
-        //    {"^", Operator.Power},
-        //    {"(", Operator.RightParen},
-        //};
-
 
         static bool Precedence(string l, string r) {
 
             var bl= precedence.TryGetValue(l, out int lhs);
             if(!bl)
                 lhs = 0;
-            //precedence[ (Operator)token.Get]
             var br = precedence.TryGetValue(r, out int rhs);
             if(!br)
-                rhs = 0; 
+                rhs = 0;
 
             return lhs >= rhs;
 
@@ -358,18 +392,22 @@
                     } else if((char)token.Get == ')') {
                         //} else if((Operator)token.Get == Operator.LeftParen) {
                         // Pop all the operators from the stack
-                        while(stack.Count != 0 && stack.Peek().Get != '(') {
+                        //while(stack.Count != 0 && stack.Peek().Get != '(') {
+                        while(stack.Count != 0 && stack.First().Get != '(') {
                             //while((Operator)stack.Peek().Get
                             //    != Operator.RightParen) {
                             postfixTokens.Add(stack.Pop());
                         }
 
-                        if(stack.Count != 0)
+                       if(stack.Count != 0)
                             stack.Pop();
                     }
+                    continue;
                 } else if(token.IsFunction()) {
 
-                    while(stack.Count != 0 &&
+                    while(stack.Count != 0
+                        && stack.Peek().Get != '('
+                        &&
                         //(precedence[((char)stack.Peek().Get).ToString()]
                         //>= precedence[((char)token.Get).ToString()])
 
@@ -386,6 +424,7 @@
                 }
             }
 
+            //postfixTokens.RemoveAt(postfixTokens.Count -1);
             return postfixTokens;
         }
 
@@ -401,6 +440,7 @@
             //new Expression("1+2*4+1").
             InfixToPostfix(
              GetExpression().
+             //new Expression("$").
             // new Expression("2^5*(3-4)").
                 //new Expression("(-1-2-3)").//-6
                 //new Expression("-2").//-6
@@ -426,10 +466,9 @@
             MakeTokens())
             );
 
-                //t.Print();
-                //var t2 = t.Eval(opsArray);
-                //Console.WriteLine(t2);
-                Console.WriteLine(t);
+                if(t != float.NegativeInfinity) {
+                    Console.WriteLine(t);
+                }
             }
         }
     }
