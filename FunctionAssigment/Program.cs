@@ -81,6 +81,7 @@
         static void Main() {
             string name = KysyNimi();
             int age = KysyIka();
+            int ika = age;
 
             TulostaNimiJaIka(name, age);
             bool isFullAge = TarkistaTaysiIkainen(ika);

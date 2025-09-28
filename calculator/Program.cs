@@ -1,6 +1,6 @@
 ﻿namespace calculator {
     // TODO: this in the future https://blog.ndepend.com/csharp-unions/
-    // Source for the tokenize and evaluat function:
+    // Source for the tokenize and evaluator function:
     // https://algotree.org/algorithms/stack_based/evaluate_infix/
 
     internal class Program {
@@ -17,38 +17,13 @@
 
         static void Main() {
             for(; ; ) {
-                //new Expression("1+2*4+1+2*5").
-                //new Expression("1+2*4+1").
-                //new Expression("$").
-                //new Expression("2^5*(3-4)").
-                //new Expression("(-1-2-3)").//-6
-                //new Expression("-2").//-6
-                //new Expression("(-1)+(-1)").
-                //new Expression("(-1)^(-1)").
-                //new Expression("(-1)^(-2)").
-                //new Expression("(2-1)/(1-2)").
-                //new Expression("(-2)^(1/2)").
-                //new Expression("-(2)^(1/2)").
-                //new Expression("(10-1)^(-1+2-2)"). // 0,111111
-                //new Expression("(10-1)^(-1)"). // 0,111111
-                //new Expression("(9)^(-1)"). // 0,111111
-                //new Expression("9^(-1)"). // 0,111111
-                //new Expression("9^-1"). // 0,111111
-                //new Expression("2^(-1)").
-                //new Expression("2^-1").
-                //new Expression("2^-1-1").
-                //new Expression("2*(-1)").
-                //new Expression("(1/4)^(-1)").
-                //new Expression("-1").
 
                 var expression = GetExpression();
-                //Interpreter.Expression? expression = new Interpreter.Expression("---1");
-                //Interpreter.Expression? expression = new Interpreter.Expression("9^-1");
                 if(expression is null) {
                     break;
                 }
 
-                var result = expression?.Tokenize().InfixToPostfix().Evaluate();
+                var result = expression?.Evaluate();
 
                 if(result != float.NegativeInfinity) {
                     Console.WriteLine(result);

@@ -3,6 +3,8 @@
         struct Expression {
             public Expression(string expression) {
                 this.expression = expression;
+                Tokenize();
+                InfixToPostfix();
             }
 
             static readonly Dictionary<string, int> precedence = new (){
@@ -13,12 +15,13 @@
             {"-", 2},
             {"(", 1}};
 
-            static bool  persistentStack = false;
+            static bool persistentStack = false;
             static readonly string decimalSeperator =
                         System.Globalization.NumberFormatInfo.CurrentInfo.CurrencyDecimalSeparator;
 
             static readonly Dictionary<string, Func<Stack<float>, int, Stack<float>>>
                 functionArray = new (){
+            /* Start of language internal commands */
             // Persistent stack
             {"s", (stack, _) => {
                 persistentStack = !persistentStack;
@@ -60,6 +63,8 @@
 
                 return stack;
             }},
+            /* End of language internal commands */
+
             {"-", (stack, argc) => {
 
                 if(stack.Count < argc) {
@@ -134,6 +139,15 @@
 
                 return stack;
             }},
+            /*
+             * Factorial breaks for these:
+             * >3!-3!
+             * Error: Factor was negative (-3)
+             * >3!-(3!)
+             * Error: Factor was negative (-3)
+             * >3!-((3(!))
+             * -6
+             */
             {"!", (stack, argc) => {
 
                 if(stack.Count < 1) {
@@ -142,14 +156,16 @@
                 }
 
                 var r = stack.Pop();
+
+                if(r < 0) {
+                    throw new Exception($"Factor was negative ({r})");
+                }
+
                 if (r == 0) {
                     stack.Push(1.0f);
                     return stack;
                 }
 
-                if(r < 0) {
-                    throw new Exception($"Factor was negative ({r})");
-                }
 
                 for(int i = ((int)r)-1; i > 0; --i) {
                     r*=i;
@@ -159,25 +175,40 @@
 
                 return stack;
             }},
+            /*
+             * An if expression: e_0 e_1 predicate ?.
+             * Returns e_0 if predicate is false (0). 
+             * Returns e_1 if predicate is true  (1).  
+             *
+             * Tokenizer needs to be change to return a tree rather than a list of tokens
+             * to make a more functional if expression.
+             */
             {"?", (stack, argc) => {
 
-                if(stack.Count < 1) {
+                if(stack.Count < 3) {
                     throw new Exception(
-                        $"Function expected {argc} arguments but got {stack.Count}");
+                        $"Function expected {3} arguments but got {stack.Count}");
                 }
 
                 var r = stack.Pop();
+
+                if(r != 0 || r != 1)
+                    throw new Exception("?'s predicate has to either be 1 or 0!");
+
+
                 if (r == 0) {
                     stack.Pop();
                     return stack;
                 }
-                else if (r == 1) {
+
+                if (r == 1) {
                     var t = stack.Pop();
                     stack.Pop();
                     stack.Push(t);
                     return stack;
                 }
 
+                // Shouldn't be here?  
                 stack.Pop();
                 stack.Pop();
                 return stack;
@@ -209,7 +240,7 @@
         };
 
 
-            public Expression Tokenize() {
+            private Expression Tokenize() {
                 List<Types.Token> tokens = [];
                 string tokenString = "";
                 /*
@@ -219,7 +250,6 @@
                  * 2x-1-1 becomes 2x(-1)-1. TODO: remove this hack and use the precedence Dictionary<>
                  * instead.
                 */
-                //bool addLeftParen = false;
                 int addLeftParen = 0;
 
                 foreach(var c in expression) {
@@ -251,25 +281,28 @@
                         tokens.Add(new Types.Number(number));
                         tokenString = "";
 
-                        //if(addLeftParen) {
                         if(addLeftParen > 0) {
                             tokens.Add(new Types.LeftParen());
-                            //addLeftParen = false;
                             addLeftParen--;
                         }
                     }
 
-
                     if(c == '(') {
                         tokens.Add(new Types.RightParen());
                         continue;
-                    } else if(c == ')') {
+                    }
+
+                    if(c == ')') {
                         tokens.Add(new Types.LeftParen());
                         continue;
-                    } else if(c == 'e') {
+                    }
+
+                    if(c == 'e') {
                         tokens.Add(new Types.Number(float.E));
                         continue;
-                    } else if(c == 'p') {
+                    }
+
+                    if(c == 'p') {
                         tokens.Add(new Types.Number(float.Pi));
                         continue;
                     }
@@ -283,7 +316,6 @@
                         if(tokens.Count != 0) {
                             if((char)tokens.Last().Get != ')') {
                                 tokens.Add(new Types.RightParen());
-                                //addLeftParen = true;
                                 addLeftParen++;
                             }
                         }
@@ -307,21 +339,17 @@
                     }
 
                     tokens.Add(new Types.Number(number));
-                    //if(addLeftParen) {
-                    //    tokens.Add(new Types.LeftParen());
-                    //    addLeftParen = false;
-                    //}
                 }
 
                 for(int i = addLeftParen; i > 0; --i) {
-                        tokens.Add(new Types.LeftParen());
+                    tokens.Add(new Types.LeftParen());
                 }
 
                 infixTokens = tokens;
                 return this;
             }
 
-            public float Evaluate() {
+            readonly public float Evaluate() {
 
                 if(!persistentStack) {
                     stack.Clear();
@@ -365,7 +393,7 @@
                 return lhs >= rhs;
             }
 
-            public Expression InfixToPostfix() {
+            private Expression InfixToPostfix() {
                 Stack<Types.Token> stack = new();
                 List<Types.Token> postfixTokens = [];
 
@@ -410,7 +438,7 @@
             }
 
             static Stack<float> stack = new();
-            string expression = "";
+            readonly string expression = "";
             List<Types.Token> infixTokens = [];
             List<Types.Token> tokens = [];
         }
