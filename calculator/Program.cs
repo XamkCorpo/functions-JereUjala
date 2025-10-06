@@ -1,5 +1,6 @@
 ﻿namespace calculator {
     // TODO: this in the future https://blog.ndepend.com/csharp-unions/
+
     // Source for the tokenize and evaluator function:
     // https://algotree.org/algorithms/stack_based/evaluate_infix/
 
